@@ -1,0 +1,11 @@
+# Pinned to versions actually used to produce reports/final_report.md.
+# See README.md for setup instructions.
+pandas==3.0.2
+numpy==2.4.3
+scikit-learn==1.8.0
+matplotlib==3.10.9
+seaborn==0.13.2
+lightgbm==4.6.0
+torch==2.11.0
+joblib==1.5.3
+datasets==4.8.5

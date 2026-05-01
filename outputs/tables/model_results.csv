@@ -1,0 +1,7 @@
+model,family,rmse,mae,r2,train_seconds,params
+MeanBaseline,baseline,22.206806914824742,18.802571634214523,-0.0001133341004539,0.0001588999875821,"{""mean"": 33.24294662475586}"
+Ridge,linear,19.108907264577223,14.117803488908743,0.2594597126126504,0.4649714000406675,"{""alpha"": 10.0}"
+Lasso,linear,19.108927666108347,14.1076124471979,0.2594581313433942,6.238198500010185,"{""alpha"": 0.001}"
+RandomForest,tree_ensemble,15.312330354849587,10.784898198286786,0.5244900980385259,88.86977980000665,"{""n_estimators"": 300, ""min_samples_leaf"": 1, ""max_features"": ""sqrt"", ""tuning_val_rmse"": 15.659581846120389}"
+LightGBM,gradient_boosting,14.562918465817742,9.771747223592204,0.5698956641114599,8.399601900018752,"{""learning_rate"": 0.05, ""num_leaves"": 127, ""n_estimators_cap"": 5000, ""best_iteration"": 2905}"
+MLP_PyTorch,neural_network,16.899847880925954,11.201211929321289,0.42078131437301636,32.72306230000686,"{""hidden"": [512, 256, 128], ""dropout"": 0.3, ""lr"": 0.001, ""weight_decay"": 0.0001, ""batch_size"": 512, ""early_stopped_epoch"": 66, ""best_val_rmse"": 17.164737701416016, ""device"": ""cuda"", ""tuned_grid_size"": 5}"

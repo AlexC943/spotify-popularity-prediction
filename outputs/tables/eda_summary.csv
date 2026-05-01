@@ -1,0 +1,2 @@
+n_rows_raw,n_rows_clean,n_cols_clean,n_genres,missing_total_raw,popularity_mean,popularity_std,popularity_zero_share
+114000,114000,16,114,3,33.2385350877193,22.30507849337216,0.1405263157894737

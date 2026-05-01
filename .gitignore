@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.claude/
+.audit_venv/
+
+# Data files are large; download with the instructions in README.md.
+data/spotify_tracks.csv
+
+# Trained models are large binaries; regenerate with `python -m src.run_all`.
+outputs/models/
+
+# Local virtualenvs / IDE
+.venv/
+.env
+.idea/
+.vscode/
