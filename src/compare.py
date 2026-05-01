@@ -197,7 +197,7 @@ def write_report(results: pd.DataFrame, top_features: pd.DataFrame) -> None:
     report = f"""# Empirical Evaluation of Predictive Models for Audio-Feature-Based Track Popularity
 
 **Course:** Yale CPSC 5810 — Introduction to Machine Learning
-**Authors:** Guangxing Cao, Rena Wang, Leslie Wang, Xinyuan Zhu
+**Authors:** Guangxing Cao, Rena Wang, Xinyuan Zhu, and Leslie Wang
 
 ## 1. Introduction
 
