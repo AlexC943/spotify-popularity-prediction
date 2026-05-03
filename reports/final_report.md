@@ -1,6 +1,7 @@
 # Empirical Evaluation of Predictive Models for Audio-Feature-Based Track Popularity
 
 **Course:** Yale CPSC 5810 — Introduction to Machine Learning
+
 **Authors:** Guangxing Cao, Rena Wang, Xinyuan Zhu, and Leslie Wang
 
 ## 1. Introduction
