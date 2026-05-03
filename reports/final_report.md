@@ -393,7 +393,7 @@ intrinsic to the sound, which appears to be a minority of the variance.
 
 ## 8. Reproducibility
 
-All experiments are seeded (`SEED=42`) and run end-to-end via:
+Follow the `README.md` file for setup. All experiments are seeded (`SEED=42`) and run end-to-end via:
 
 ```
 python -m src.run_all
