@@ -391,25 +391,92 @@ intrinsic to the sound, which appears to be a minority of the variance.
   with the tree ensembles, although prior empirical surveys suggest
   the gap will remain modest.
 
+
 ## 8. Reproducibility
 
-Follow the `README.md` file for setup. 
+Please follow the instructions in `README.md` to set up the environment, install the required packages, download the dataset, and run the project.
 
-The results are obtained by runing on the Yale HPC, with the following settings:
-```
+All results reported in this paper were reproduced on the Yale HPC Code Server with the following resource settings:
+
+```text
 Number of CPU cores per node: 3
-Memory per CPU core in GiB: 50
+Memory per CPU core: 50 GiB
+Partition: devel
 ```
 
+All experiments are seeded with `SEED = 42` across NumPy, Python `random`, PyTorch, scikit-learn, and LightGBM whenever applicable. The full pipeline can be run end-to-end from the project root directory using:
 
-All experiments are seeded (`SEED=42`) and run end-to-end via:
-
-```
+```bash
 python -m src.run_all
 ```
 
-The script regenerates every figure in `outputs/figures/`, the metrics
-table in `outputs/tables/model_results.csv`, the tuning sweeps
-(`rf_tuning.csv`, `mlp_tuning.csv`), and this report. cuDNN is set to
-deterministic mode in `train_nn.py`; the resulting numbers are
-bit-identical across runs on the same hardware.
+This command regenerates all major project outputs, including the figures in `outputs/figures/`, the evaluation tables in `outputs/tables/`, the model comparison results in `outputs/tables/model_results.csv`, the tuning results in `outputs/tables/rf_tuning.csv` and `outputs/tables/mlp_tuning.csv`, the ablation results in `outputs/tables/ablation_genre.csv`, the multi-seed results, and the final report.
+
+For the neural network model, cuDNN is set to deterministic mode in `src/train_nn.py` to improve reproducibility. Under the same hardware and software environment, the results should be reproducible across repeated runs.
+
+
+### 8.1 HPC Setup and Run Instructions
+
+
+This project was tested with Python 3.9–3.11. CPU-only execution works, although GPU can speed up the neural network part.
+
+#### 1. Open Code Server on HPC
+
+Launch **Code Server** from the HPC OnDemand portal. Set the working directory to your project folder, for example:
+
+```bash
+/home/cpsc3810_rw777/project_cpsc3810/cpsc3810_rw777/spotify-popularity-prediction
+```
+
+#### 2. Create and activate a Python environment
+
+From the project root directory:
+```bash
+cd /home/cpsc3810_rw777/project_cpsc3810/cpsc3810_rw777/spotify-popularity-prediction
+
+python -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+#### 3. Download the Dataset
+
+
+The pipeline expects the dataset at:
+```
+data/spotify_tracks.csv
+```
+Download it with:
+```
+mkdir -p data
+python -c "from datasets import load_dataset; load_dataset('maharshipandya/spotify-tracks-dataset', split='train').to_csv('data/spotify_tracks.csv', index=False)"
+```
+The README specifies that the dataset is not included in the repo and must be placed at data/spotify_tracks.csv
+
+#### 4. Run the full pipeline
+For a quick direct run:
+```
+python -m src.run_all
+```
+This command regenerates the figures, result tables, and final report.
+
+
+#### 5. Check outputs
+
+After the job finishes, check:
+```
+ls outputs/figures
+ls outputs/tables
+ls reports
+```
+Expected important files include:
+```
+outputs/tables/model_results.csv
+outputs/tables/rf_tuning.csv
+outputs/tables/mlp_tuning.csv
+outputs/tables/ablation_genre.csv
+outputs/figures/
+reports/final_report.md
+```
