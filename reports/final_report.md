@@ -393,7 +393,16 @@ intrinsic to the sound, which appears to be a minority of the variance.
 
 ## 8. Reproducibility
 
-Follow the `README.md` file for setup. All experiments are seeded (`SEED=42`) and run end-to-end via:
+Follow the `README.md` file for setup. 
+
+The results are obtained by runing on the Yale HPC, with the following settings:
+```
+Number of CPU cores per node: 3
+Memory per CPU core in GiB: 50
+```
+
+
+All experiments are seeded (`SEED=42`) and run end-to-end via:
 
 ```
 python -m src.run_all
