@@ -20,12 +20,15 @@ from . import _plotting  # noqa: F401
 import json
 import time
 
+# Import order matters: on macOS with Anaconda, importing torch before
+# lightgbm can leave two libomp.dylib copies linked into the process and
+# crash inside LightGBM. Importing lightgbm first avoids that race.
+import lightgbm as lgb
+
 import numpy as np
 import pandas as pd
 import torch
 from sklearn.ensemble import RandomForestRegressor
-
-import lightgbm as lgb
 
 from . import config
 from .data import get_feature_names, prepare

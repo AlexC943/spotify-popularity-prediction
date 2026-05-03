@@ -15,3 +15,4 @@ outputs/models/
 .env
 .idea/
 .vscode/
+.DS_Store

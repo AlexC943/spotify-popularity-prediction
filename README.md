@@ -19,11 +19,11 @@ touched during model selection). Reproduced from
 
 | Model | RMSE | MAE | R² | ΔRMSE vs. mean baseline | Train (s) |
 |---|---:|---:|---:|---:|---:|
-| **LightGBM** (best) | **14.563** | **9.772** | **0.570** | **+34.4%** | 8.6 |
-| Random Forest (tuned) | 15.312 | 10.785 | 0.524 | +31.0% | 86.6 |
-| MLP (PyTorch, tuned)  | 16.900 | 11.201 | 0.421 | +23.9% | 29.8 |
-| Ridge | 19.109 | 14.118 | 0.259 | +14.0% | 0.4 |
-| Lasso | 19.109 | 14.108 | 0.259 | +14.0% | 5.6 |
+| **LightGBM** (best) | **14.563** | **9.772** | **0.570** | **+34.4%** | 27.1 |
+| Random Forest (tuned) | 15.289 | 10.768 | 0.526 | +31.2% | 76.5 |
+| MLP (PyTorch, tuned)  | 16.894 | 11.326 | 0.421 | +23.9% | 66.0 |
+| Ridge | 19.109 | 14.118 | 0.259 | +14.0% | 0.3 |
+| Lasso | 19.109 | 14.108 | 0.259 | +14.0% | 1.7 |
 | Mean baseline | 22.207 | 18.803 | −0.000 | 0.0% | <0.01 |
 
 Both proposal targets (R² ≥ 0.50 AND ≥15% RMSE reduction over the mean
@@ -70,10 +70,11 @@ requirements.txt
 
 ## Setup
 
-Tested on Windows 11, Python 3.11, CUDA 12.x. CPU-only also works.
+Tested on Windows 11 / macOS / Linux, Python 3.9–3.11. CUDA optional;
+CPU-only works.
 
 ```bash
-git clone https://github.com/AlexC943/spotify-popularity-prediction
+# Either clone the repo, or unzip the submission archive, then:
 cd spotify-popularity-prediction
 python -m pip install -r requirements.txt
 ```
@@ -84,12 +85,13 @@ The pipeline expects `data/spotify_tracks.csv`. The dataset itself is
 not in the repo (it's distributed by Kaggle / HuggingFace; the README
 points to the canonical source so anyone can grab the same file).
 
-**Option A — HuggingFace mirror (no Kaggle account needed):**
+**Option A — HuggingFace mirror (no Kaggle account needed; recommended):**
 
-```python
-from datasets import load_dataset
-ds = load_dataset("maharshipandya/spotify-tracks-dataset", split="train")
-ds.to_csv("data/spotify_tracks.csv", index=False)
+```bash
+mkdir -p data
+python -c "from datasets import load_dataset; \
+  load_dataset('maharshipandya/spotify-tracks-dataset', split='train') \
+    .to_csv('data/spotify_tracks.csv', index=False)"
 ```
 
 **Option B — Kaggle CLI:**
@@ -129,6 +131,18 @@ python -m src.ablation           # writes ablation_genre.csv
 python -m src.multi_seed         # writes multi_seed_results.csv + summary
 python -m src.compare            # comparison plots + final report
 ```
+
+**macOS note:** if `python -m src.multi_seed` runs at full CPU briefly and
+then sits at 0% CPU forever, it has hit an OpenMP thread-pool deadlock
+between PyTorch and LightGBM (both ship their own OpenMP runtime, and on
+some macOS + Anaconda setups they oversubscribe and lock up). Workaround:
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python -m src.multi_seed
+```
+
+The single-threaded fallback adds a few minutes but always completes.
+Linux and Colab are unaffected.
 
 ## Reproducibility
 

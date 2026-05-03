@@ -21,6 +21,20 @@ a feed-forward neural network. The aim is not to win a leaderboard; it
 is to characterize the ceiling of what audio alone can predict and to
 compare the cost-vs-accuracy trade-off across model families.
 
+The main challenges we faced were (i) **zero-inflation** — about 14% of
+tracks have popularity exactly 0, which a single-stage regressor cannot
+explain from the audio alone; (ii) **label noise** — the popularity
+score is driven by streaming counts, playlist placement, and release
+recency, none of which are observable from the waveform, so any
+audio-only model has a hard upper bound on attainable R²; (iii)
+**leakage avoidance** — naive use of `track_name` / `artists` would let
+the model memorize "Drake = popular" rather than learn audio↔popularity
+structure, so we drop those fields before any modeling step; and
+(iv) **environment portability** — running PyTorch and LightGBM in the
+same process can deadlock on macOS Anaconda due to two competing
+OpenMP runtimes, which we work around with the documented Intel flag
+(see README).
+
 ## 2. Dataset
 
 We use the **Spotify Tracks Dataset** from Kaggle
@@ -77,27 +91,41 @@ feature-importance plots).
 
 ### 3.2 Models
 
+For every model the **measure of fit** at evaluation time is RMSE on
+the held-out test set; the per-model **training objective** is given
+below.
+
 - **Mean baseline.** Predicts `mean(y_train)` for every test point.
-  This pins R² at zero and sets the RMSE floor against which the
-  proposal's ≥15% reduction target is measured.
-- **Ridge / Lasso.** Closed-form linear regression with L2 / L1
-  regularization. `alpha` is grid-searched on the validation split.
-- **Random Forest.** 300 trees. We swept six configurations of
-  `min_samples_leaf` ∈ {1, 2, 5} × `max_features` ∈ {"sqrt", 1.0}
-  with 100-tree probes on the validation split, then refit the best
-  configuration at 300 trees on the same training data. The full sweep
-  is in `outputs/tables/rf_tuning.csv`.
-- **LightGBM.** Gradient-boosted trees with `learning_rate=0.05`,
-  `num_leaves=127`, trained with **early stopping on validation RMSE**
-  (patience 50). The convergence point and best iteration are recorded
-  alongside the test metrics.
-- **MLP (PyTorch).** A feed-forward network. We swept five
+  No training objective. This pins R² at zero and sets the RMSE floor
+  against which the proposal's ≥15% reduction target is measured.
+- **Ridge.** Linear regression with L2 regularization. Objective:
+  minimize ½‖y − Xβ‖² + α‖β‖²₂, solved in closed form.
+- **Lasso.** Linear regression with L1 regularization. Objective:
+  minimize ½‖y − Xβ‖² + α‖β‖₁, solved by coordinate descent.
+- **Random Forest.** Bagged ensemble of regression trees. Each tree
+  greedily chooses splits that maximize variance reduction
+  (equivalently, minimize within-node MSE). 300 trees. We swept six
+  configurations of `min_samples_leaf` ∈ {1, 2, 5} × `max_features` ∈
+  {"sqrt", 1.0} with 100-tree probes on the validation split, then
+  refit the best configuration at 300 trees on the same training data.
+  The full sweep is in `outputs/tables/rf_tuning.csv`.
+- **LightGBM.** Gradient-boosted trees minimizing squared error
+  (`objective="regression"`, equivalently L2 loss on the residuals).
+  Trained with `learning_rate=0.05`, `num_leaves=127`, and **early
+  stopping on validation RMSE** (patience 50). The convergence point
+  and best iteration are recorded alongside the test metrics.
+- **MLP (PyTorch).** A feed-forward fully-connected network with three
+  hidden layers (best config: 512 → 256 → 128), ReLU activations, and
+  dropout after each hidden layer. The output is a single linear unit.
+  Objective: mean squared error on a standardized target,
+  L = (1/N) Σᵢ (ŷᵢ − yᵢ)², optimized by Adam (PyTorch defaults β₁=0.9,
+  β₂=0.999, ε=1e-8) with weight decay 1e-4 and batch size 512.
+  Predictions are unstandardized for evaluation. We swept five
   (architecture, dropout, learning rate) configurations on validation
   and kept the best one for the test report; the full sweep is in
-  `outputs/tables/mlp_tuning.csv`. Each configuration trains with Adam,
-  weight decay 1e-4, batch size 512, MSE loss on a standardized target
-  that is unstandardized for evaluation, and early stopping on
-  validation RMSE with patience 8. cuDNN is set to deterministic mode.
+  `outputs/tables/mlp_tuning.csv`. Each configuration uses early
+  stopping on validation RMSE with patience 8. cuDNN is set to
+  deterministic mode.
 
 All randomness is seeded (`SEED=42`) across NumPy, Python `random`,
 PyTorch (CPU and CUDA), and the DataLoader generator.
@@ -108,15 +136,81 @@ We report **RMSE**, **MAE**, and **R²** on the held-out test set, plus
 the percentage RMSE reduction relative to the mean baseline (the
 proposal's success criterion).
 
-## 4. Results
+## 4. Implementation Details
+
+### 4.1 Preprocessing
+
+- **Numeric features** (`danceability`, `energy`, `loudness`,
+  `speechiness`, `acousticness`, `instrumentalness`, `liveness`,
+  `valence`, `tempo`, `duration_ms`): `StandardScaler` (zero mean, unit
+  variance) fit on the training split only.
+- **Categorical features** (`track_genre`, `key`, `mode`,
+  `time_signature`, `explicit`): `OneHotEncoder` with
+  `handle_unknown="ignore"` so unseen categories at inference become
+  all-zero indicator vectors instead of crashing. After encoding the
+  feature matrix has 145 columns (10 numeric + 135 one-hot).
+- **Target** (`popularity`): kept on its native 0–100 scale for tree
+  models and linear models; standardized to zero mean / unit variance
+  for the MLP and unstandardized after prediction for evaluation.
+- **Identity-like fields dropped before modeling**: `track_id`,
+  `track_name`, `artists`, `album_name`, `Unnamed: 0`.
+- **Rows dropped**: only those with NaN in any numeric feature or in
+  the target. Final usable rows: 114,000 / 114,000.
+- **Split**: 70 / 15 / 15 train / val / test, `random_state=42`. The
+  preprocessor is fit on the training split only.
+
+### 4.2 Final hyperparameters per model
+
+| Model | Final hyperparameters (after validation tuning) |
+|---|---|
+| Mean baseline | `mean(y_train) ≈ 33.24` |
+| Ridge | `α = 10.0` (selected from {0.01, 0.1, 1.0, 5.0, 10.0, 50.0, 100.0}), `max_iter=20000` |
+| Lasso | `α = 0.001` (selected from {0.001, 0.01, 0.05, 0.1, 0.5, 1.0}), `max_iter=20000` |
+| Random Forest | `n_estimators=300`, `min_samples_leaf=1`, `max_features="sqrt"` (winner of 6-config validation sweep at 100 trees, refit at 300) |
+| LightGBM | `n_estimators_cap=5000`, `learning_rate=0.05`, `num_leaves=127`, `min_child_samples=20`, `feature_fraction=0.9`, `bagging_fraction=0.9`, `bagging_freq=5`. Early stopping on validation RMSE with patience 50 → **best_iteration = 2905** |
+| MLP (PyTorch) | hidden=(512x256x128), ReLU, dropout=0.3 after each hidden layer; optimizer = Adam (lr=0.001, β₁=0.9, β₂=0.999, ε=1e-8, weight_decay=1e-4); batch_size=512; loss=MSE on standardized target; max_epochs=80; early stopping on validation RMSE with patience 8 → stopped at epoch 72 |
+
+### 4.3 Validation tuning sweeps
+
+- **Random Forest** (6 configs at 100 trees, ranked by val RMSE):
+
+  | min_samples_leaf | max_features | val RMSE |
+  |---:|---|---:|
+  | 1 | sqrt | 15.701 |
+  | 2 | 1.0 | 15.785 |
+  | 1 | 1.0 | 15.811 |
+  | 5 | 1.0 | 16.138 |
+  | 2 | sqrt | 16.349 |
+  | 5 | sqrt | 17.324 |
+
+- **MLP** (5 configs, ranked by val RMSE):
+
+  | hidden | dropout | lr | epochs (early-stop) | val RMSE |
+  |---|---:|---:|---:|---:|
+  | 512x256x128 | 0.3 | 0.001 | 72 | 17.109 |
+  | 512x256x128 | 0.2 | 0.001 | 52 | 17.220 |
+  | 256x128x64 | 0.2 | 0.0005 | 63 | 17.375 |
+  | 256x128x64 | 0.2 | 0.001 | 60 | 17.500 |
+  | 256x128x64 | 0.1 | 0.001 | 38 | 17.603 |
+
+Full sweeps in `outputs/tables/rf_tuning.csv` and `outputs/tables/mlp_tuning.csv`.
+
+### 4.4 Reproducibility
+
+`SEED = 42` is set across NumPy, Python `random`, PyTorch (CPU + CUDA),
+the DataLoader generator, sklearn `random_state`, and LightGBM
+`random_state`. cuDNN is set to deterministic mode in
+`src/train_nn.py`. End-to-end execution: `python -m src.run_all`.
+
+## 5. Results
 
 | Model | Family | RMSE | MAE | R² | ΔRMSE vs baseline | Train (s) |
 |---|---|---:|---:|---:|---:|---:|
-| LightGBM | gradient_boosting | 14.563 | 9.772 | 0.570 | +34.4% | 8.4 |
-| RandomForest | tree_ensemble | 15.312 | 10.785 | 0.524 | +31.0% | 88.9 |
-| MLP_PyTorch | neural_network | 16.900 | 11.201 | 0.421 | +23.9% | 32.7 |
-| Ridge | linear | 19.109 | 14.118 | 0.259 | +14.0% | 0.5 |
-| Lasso | linear | 19.109 | 14.108 | 0.259 | +14.0% | 6.2 |
+| LightGBM | gradient_boosting | 14.563 | 9.772 | 0.570 | +34.4% | 27.1 |
+| RandomForest | tree_ensemble | 15.289 | 10.768 | 0.526 | +31.2% | 76.5 |
+| MLP_PyTorch | neural_network | 16.894 | 11.326 | 0.421 | +23.9% | 66.0 |
+| Ridge | linear | 19.109 | 14.118 | 0.259 | +14.0% | 0.3 |
+| Lasso | linear | 19.109 | 14.108 | 0.259 | +14.0% | 1.7 |
 | MeanBaseline | baseline | 22.207 | 18.803 | -0.000 | +0.0% | 0.0 |
 
 **Best model: `LightGBM`** with test RMSE = **14.56**,
@@ -129,21 +223,21 @@ preprocessed features is a poor fit for popularity. Both tree ensembles
 improve substantially: LightGBM is the strongest single model, and
 Random Forest sits just below it while taking many times longer to
 train. The MLP outperforms the linear models but does not reach the
-tree ensembles. Its test RMSE is +2.34 above LightGBM and
-+1.59 above Random Forest. This ordering (gradient-boosted
+tree ensembles. Its test RMSE is +2.33 above LightGBM and
++1.60 above Random Forest. This ordering (gradient-boosted
 trees > random forest > MLP > linear) is the empirical norm for tabular
 data of this size.
 
-### 4.1 Are the proposal's success criteria met?
+### 5.1 Are the proposal's success criteria met?
 
-- **≥ 15% RMSE reduction over the mean baseline.** Met by: LightGBM (+34.4%), RandomForest (+31.0%), MLP_PyTorch (+23.9%).
+- **≥ 15% RMSE reduction over the mean baseline.** Met by: LightGBM (+34.4%), RandomForest (+31.2%), MLP_PyTorch (+23.9%).
   Not met by: Ridge (+14.0%), Lasso (+14.0%).
-- **R² ≥ 0.50.** Met by: LightGBM (R²=0.570), RandomForest (R²=0.524). Not met by: MLP_PyTorch (R²=0.421), Ridge (R²=0.259), Lasso (R²=0.259).
+- **R² ≥ 0.50.** Met by: LightGBM (R²=0.570), RandomForest (R²=0.526). Not met by: MLP_PyTorch (R²=0.421), Ridge (R²=0.259), Lasso (R²=0.259).
 
 Both targets are met by the tree ensembles. The linear models clear
 neither bar; the MLP clears the RMSE bar but not R².
 
-### 4.2 What the model is using
+### 5.2 What the model is using
 
 Top base features (LightGBM split importance, with the 114 genre
 dummies summed back into a single `track_genre` row):
@@ -180,9 +274,9 @@ that fall outside the mainstream production envelope (very speech-heavy,
 very acoustic, unusually long) systematically score lower; tracks that
 sit inside the modern pop range systematically score higher.
 
-### 4.3 Multi-seed stability
+### 5.3 Multi-seed stability
 
-The metrics in §4 are point estimates produced with `seed=42`. To
+The metrics in §5 are point estimates produced with `seed=42`. To
 quantify how stable they are we refit the tuned configurations of the
 three non-trivial models under three independent seeds
 (`[42, 7, 13]`) and report mean ± standard deviation of the test
@@ -191,8 +285,8 @@ metrics:
 | Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
 |---|---:|---:|---:|
 | LightGBM | 14.529 ± 0.032 | 9.722 ± 0.052 | 0.572 ± 0.002 |
-| MLP_PyTorch | 17.016 ± 0.127 | 11.506 ± 0.279 | 0.413 ± 0.009 |
-| RandomForest | 15.292 ± 0.019 | 10.769 ± 0.014 | 0.526 ± 0.001 |
+| MLP_PyTorch | 17.045 ± 0.151 | 11.609 ± 0.241 | 0.411 ± 0.010 |
+| RandomForest | 15.279 ± 0.010 | 10.759 ± 0.008 | 0.527 ± 0.001 |
 
 The standard deviations are small relative to the gaps between model
 families: tree ensembles remain ahead of the MLP across every seed, and
@@ -200,7 +294,7 @@ the headline numbers in the main table are within one standard deviation
 of the multi-seed mean. Per-seed values are in
 `outputs/tables/multi_seed_results.csv`.
 
-### 4.4 Predicted vs. actual
+### 5.4 Predicted vs. actual
 
 `outputs/figures/10_pred_vs_actual_lgbm.png` shows the LightGBM test-set
 predictions as a hexbin plot against the true popularity. Two patterns
@@ -213,7 +307,7 @@ high label noise: when the audio cannot disambiguate "bad song" from
 "good song that no one has heard yet", the model hedges toward the
 mean.
 
-### 4.5 Genre ablation: how much of R² is genre vs. audio?
+### 5.5 Genre ablation: how much of R² is genre vs. audio?
 
 `track_genre` is partly a proxy for the kind of artist that records in
 that genre, which is a soft form of the identity-leakage problem we
@@ -233,7 +327,7 @@ importance plots suggested: genre carries useful information, but the
 continuous audio features carry more, and the strict audio-only model
 still clears the proposal's 15% RMSE-reduction bar comfortably.
 
-## 5. Discussion
+## 6. Discussion
 
 **Did we hit the proposal's targets?** Both criteria are met by the
 tree ensembles (LightGBM and Random Forest); the MLP and the linear
@@ -275,7 +369,7 @@ intrinsic to the sound, which appears to be a minority of the variance.
   gap to LightGBM in our sweep. This is consistent with prior results
   on tabular data of similar size.
 
-## 6. Limitations and Future Work
+## 7. Limitations and Future Work
 
 - **Audio features alone are a hard ceiling.** Adding artist
   embeddings, release year, and playlist-membership signals would
@@ -289,14 +383,14 @@ intrinsic to the sound, which appears to be a minority of the variance.
   to handle the 14% zero spike and is left as future work.
 - **Genre as a leaky proxy.** Some of the gain from `track_genre` is
   really gain from the kind of artist that records in that genre. The
-  ablation in §4.5 reports the strict content-only ceiling.
+  ablation in §5.5 reports the strict content-only ceiling.
 - **MLP search budget.** Our sweep covers five configurations. A
   larger sweep (or a different architecture family entirely, such as
   TabNet or FT-Transformer) could change the qualitative comparison
   with the tree ensembles, although prior empirical surveys suggest
   the gap will remain modest.
 
-## 7. Reproducibility
+## 8. Reproducibility
 
 All experiments are seeded (`SEED=42`) and run end-to-end via:
 
