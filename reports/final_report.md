@@ -168,7 +168,7 @@ proposal's success criterion).
 | Lasso | `α = 0.001` (selected from {0.001, 0.01, 0.05, 0.1, 0.5, 1.0}), `max_iter=20000` |
 | Random Forest | `n_estimators=300`, `min_samples_leaf=1`, `max_features="sqrt"` (winner of 6-config validation sweep at 100 trees, refit at 300) |
 | LightGBM | `n_estimators_cap=5000`, `learning_rate=0.05`, `num_leaves=127`, `min_child_samples=20`, `feature_fraction=0.9`, `bagging_fraction=0.9`, `bagging_freq=5`. Early stopping on validation RMSE with patience 50 → **best_iteration = 2905** |
-| MLP (PyTorch) | hidden=(512x256x128), ReLU, dropout=0.3 after each hidden layer; optimizer = Adam (lr=0.001, β₁=0.9, β₂=0.999, ε=1e-8, weight_decay=1e-4); batch_size=512; loss=MSE on standardized target; max_epochs=80; early stopping on validation RMSE with patience 8 → stopped at epoch 72 |
+| MLP (PyTorch) | hidden=(512x256x128), ReLU, dropout=0.3 after each hidden layer; optimizer = Adam (lr=0.001, β₁=0.9, β₂=0.999, ε=1e-8, weight_decay=1e-4); batch_size=512; loss=MSE on standardized target; max_epochs=80; early stopping on validation RMSE with patience 8 → stopped at epoch 37 |
 
 ### 4.3 Validation tuning sweeps
 
@@ -176,22 +176,22 @@ proposal's success criterion).
 
   | min_samples_leaf | max_features | val RMSE |
   |---:|---|---:|
-  | 1 | sqrt | 15.701 |
-  | 2 | 1.0 | 15.785 |
-  | 1 | 1.0 | 15.811 |
-  | 5 | 1.0 | 16.138 |
-  | 2 | sqrt | 16.349 |
-  | 5 | sqrt | 17.324 |
+  | 1 | sqrt | 15.660 |
+  | 2 | 1.0 | 15.789 |
+  | 1 | 1.0 | 15.825 |
+  | 5 | 1.0 | 16.137 |
+  | 2 | sqrt | 16.337 |
+  | 5 | sqrt | 17.312 |
 
 - **MLP** (5 configs, ranked by val RMSE):
 
   | hidden | dropout | lr | epochs (early-stop) | val RMSE |
   |---|---:|---:|---:|---:|
-  | 512x256x128 | 0.3 | 0.001 | 72 | 17.109 |
-  | 512x256x128 | 0.2 | 0.001 | 52 | 17.220 |
-  | 256x128x64 | 0.2 | 0.0005 | 63 | 17.375 |
-  | 256x128x64 | 0.2 | 0.001 | 60 | 17.500 |
-  | 256x128x64 | 0.1 | 0.001 | 38 | 17.603 |
+  | 512x256x128 | 0.3 | 0.001 | 37 | 17.223 |
+  | 256x128x64 | 0.2 | 0.001 | 47 | 17.277 |
+  | 512x256x128 | 0.2 | 0.001 | 34 | 17.280 |
+  | 256x128x64 | 0.2 | 0.0005 | 79 | 17.358 |
+  | 256x128x64 | 0.1 | 0.001 | 37 | 17.610 |
 
 Full sweeps in `outputs/tables/rf_tuning.csv` and `outputs/tables/mlp_tuning.csv`.
 
@@ -206,11 +206,11 @@ the DataLoader generator, sklearn `random_state`, and LightGBM
 
 | Model | Family | RMSE | MAE | R² | ΔRMSE vs baseline | Train (s) |
 |---|---|---:|---:|---:|---:|---:|
-| LightGBM | gradient_boosting | 14.563 | 9.772 | 0.570 | +34.4% | 27.1 |
-| RandomForest | tree_ensemble | 15.289 | 10.768 | 0.526 | +31.2% | 76.5 |
-| MLP_PyTorch | neural_network | 16.894 | 11.326 | 0.421 | +23.9% | 66.0 |
-| Ridge | linear | 19.109 | 14.118 | 0.259 | +14.0% | 0.3 |
-| Lasso | linear | 19.109 | 14.108 | 0.259 | +14.0% | 1.7 |
+| LightGBM | gradient_boosting | 14.563 | 9.772 | 0.570 | +34.4% | 31.3 |
+| RandomForest | tree_ensemble | 15.312 | 10.785 | 0.524 | +31.0% | 835.5 |
+| MLP_PyTorch | neural_network | 17.084 | 11.633 | 0.408 | +23.1% | 189.9 |
+| Ridge | linear | 19.109 | 14.118 | 0.259 | +14.0% | 0.6 |
+| Lasso | linear | 19.109 | 14.108 | 0.259 | +14.0% | 3.0 |
 | MeanBaseline | baseline | 22.207 | 18.803 | -0.000 | +0.0% | 0.0 |
 
 **Best model: `LightGBM`** with test RMSE = **14.56**,
@@ -223,16 +223,16 @@ preprocessed features is a poor fit for popularity. Both tree ensembles
 improve substantially: LightGBM is the strongest single model, and
 Random Forest sits just below it while taking many times longer to
 train. The MLP outperforms the linear models but does not reach the
-tree ensembles. Its test RMSE is +2.33 above LightGBM and
-+1.60 above Random Forest. This ordering (gradient-boosted
+tree ensembles. Its test RMSE is +2.52 above LightGBM and
++1.77 above Random Forest. This ordering (gradient-boosted
 trees > random forest > MLP > linear) is the empirical norm for tabular
 data of this size.
 
 ### 5.1 Are the proposal's success criteria met?
 
-- **≥ 15% RMSE reduction over the mean baseline.** Met by: LightGBM (+34.4%), RandomForest (+31.2%), MLP_PyTorch (+23.9%).
+- **≥ 15% RMSE reduction over the mean baseline.** Met by: LightGBM (+34.4%), RandomForest (+31.0%), MLP_PyTorch (+23.1%).
   Not met by: Ridge (+14.0%), Lasso (+14.0%).
-- **R² ≥ 0.50.** Met by: LightGBM (R²=0.570), RandomForest (R²=0.526). Not met by: MLP_PyTorch (R²=0.421), Ridge (R²=0.259), Lasso (R²=0.259).
+- **R² ≥ 0.50.** Met by: LightGBM (R²=0.570), RandomForest (R²=0.524). Not met by: MLP_PyTorch (R²=0.408), Ridge (R²=0.259), Lasso (R²=0.259).
 
 Both targets are met by the tree ensembles. The linear models clear
 neither bar; the MLP clears the RMSE bar but not R².
@@ -285,8 +285,8 @@ metrics:
 | Model | RMSE (mean ± std) | MAE (mean ± std) | R² (mean ± std) |
 |---|---:|---:|---:|
 | LightGBM | 14.529 ± 0.032 | 9.722 ± 0.052 | 0.572 ± 0.002 |
-| MLP_PyTorch | 17.045 ± 0.151 | 11.609 ± 0.241 | 0.411 ± 0.010 |
-| RandomForest | 15.279 ± 0.010 | 10.759 ± 0.008 | 0.527 ± 0.001 |
+| MLP_PyTorch | 17.073 ± 0.077 | 11.641 ± 0.022 | 0.409 ± 0.005 |
+| RandomForest | 15.292 ± 0.019 | 10.769 ± 0.014 | 0.526 ± 0.001 |
 
 The standard deviations are small relative to the gaps between model
 families: tree ensembles remain ahead of the MLP across every seed, and

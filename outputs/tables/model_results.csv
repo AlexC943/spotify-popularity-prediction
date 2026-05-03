@@ -1,7 +1,7 @@
 model,family,rmse,mae,r2,train_seconds,params
-MeanBaseline,baseline,22.206806914824742,18.802571634214523,-0.0001133341004539,0.00011,"{""mean"": 33.24294662475586}"
-Ridge,linear,19.108907264577205,14.11780348890869,0.2594597126126517,0.2650628749999999,"{""alpha"": 10.0}"
-Lasso,linear,19.108927666108347,14.107612447197898,0.2594581313433943,1.7234715829999998,"{""alpha"": 0.001}"
-RandomForest,tree_ensemble,15.28902509729893,10.767611724506107,0.5259364418940694,76.54939345899999,"{""n_estimators"": 300, ""min_samples_leaf"": 1, ""max_features"": ""sqrt"", ""tuning_val_rmse"": 15.701476764005552}"
-LightGBM,gradient_boosting,14.56291846581774,9.771747223592204,0.56989566411146,27.066845458000003,"{""learning_rate"": 0.05, ""num_leaves"": 127, ""n_estimators_cap"": 5000, ""best_iteration"": 2905}"
-MLP_PyTorch,neural_network,16.89383352966771,11.326425552368164,0.4211934804916382,66.01410262499999,"{""hidden"": [512, 256, 128], ""dropout"": 0.3, ""lr"": 0.001, ""weight_decay"": 0.0001, ""batch_size"": 512, ""early_stopped_epoch"": 72, ""best_val_rmse"": 17.108592987060547, ""device"": ""cpu"", ""tuned_grid_size"": 5}"
+MeanBaseline,baseline,22.206806914824742,18.802571634214523,-0.0001133341004539,9.866396430879833e-05,"{""mean"": 33.24294662475586}"
+Ridge,linear,19.108907264577223,14.117803488908743,0.2594597126126504,0.6055782629991882,"{""alpha"": 10.0}"
+Lasso,linear,19.108927666108347,14.107612447197898,0.2594581313433942,2.9653964539757,"{""alpha"": 0.001}"
+RandomForest,tree_ensemble,15.312330354849587,10.784898198286786,0.5244900980385259,835.5179231420043,"{""n_estimators"": 300, ""min_samples_leaf"": 1, ""max_features"": ""sqrt"", ""tuning_val_rmse"": 15.659581846120389}"
+LightGBM,gradient_boosting,14.562918465817742,9.771747223592204,0.5698956641114599,31.311024163034745,"{""learning_rate"": 0.05, ""num_leaves"": 127, ""n_estimators_cap"": 5000, ""best_iteration"": 2905}"
+MLP_PyTorch,neural_network,17.083814561470255,11.632865905761719,0.40810221433639526,189.89669361402048,"{""hidden"": [512, 256, 128], ""dropout"": 0.3, ""lr"": 0.001, ""weight_decay"": 0.0001, ""batch_size"": 512, ""early_stopped_epoch"": 37, ""best_val_rmse"": 17.22270393371582, ""device"": ""cpu"", ""tuned_grid_size"": 5}"
