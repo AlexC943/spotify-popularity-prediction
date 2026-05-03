@@ -425,14 +425,14 @@ This project was tested with Python 3.9–3.11. CPU-only execution works, althou
 Launch **Code Server** from the HPC OnDemand portal. Set the working directory to your project folder, for example:
 
 ```bash
-/home/cpsc3810_rw777/project_cpsc3810/cpsc3810_rw777/spotify-popularity-prediction
+ /home/cpsc3810_netid/project_cpsc3810/cpsc3810_netid/spotify-popularity-prediction
 ```
 
 #### 2. Create and activate a Python environment
 
 From the project root directory:
 ```bash
-cd /home/cpsc3810_rw777/project_cpsc3810/cpsc3810_rw777/spotify-popularity-prediction
+cd /home/cpsc3810_netid/project_cpsc3810/cpsc3810_netid/spotify-popularity-prediction
 
 python -m venv .venv
 source .venv/bin/activate
