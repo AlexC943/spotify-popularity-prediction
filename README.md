@@ -70,7 +70,7 @@ requirements.txt
 
 ## Setup
 
-Tested on Windows 11 / macOS / Linux, Python 3.9–3.11. CUDA optional;
+Tested on macOS / Linux (HPC), Python 3.9–3.11. CUDA optional;
 CPU-only works.
 
 ```bash
@@ -114,9 +114,7 @@ and report. It regenerates every figure in `outputs/figures/`, every
 metric CSV in `outputs/tables/`, and rewrites
 `reports/final_report.md` with the actual numbers (no placeholders).
 
-Wall-clock on a machine with one CUDA-capable GPU: ~9 minutes
-(RF sweep dominates at ~5 min, LightGBM ~10 s, MLP sweep ~2 min,
-multi-seed refits ~2 min). On CPU only, ~12 min.
+Wall-clock on a machine Mac with M5 chip: ~17 min; on HPC node: ~ 1 hour.
 
 The pipeline forces the Matplotlib `Agg` backend internally, so no
 display server or Tk is required.
@@ -139,6 +137,8 @@ some macOS + Anaconda setups they oversubscribe and lock up). Workaround:
 
 ```bash
 KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python -m src.multi_seed
+or for the entire run
+KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1 python -m src.run_all
 ```
 
 The single-threaded fallback adds a few minutes but always completes.
