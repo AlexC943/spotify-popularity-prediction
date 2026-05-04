@@ -19,11 +19,11 @@ touched during model selection). Reproduced from
 
 | Model | RMSE | MAE | R² | ΔRMSE vs. mean baseline | Train (s) |
 |---|---:|---:|---:|---:|---:|
-| **LightGBM** (best) | **14.563** | **9.772** | **0.570** | **+34.4%** | 27.1 |
-| Random Forest (tuned) | 15.289 | 10.768 | 0.526 | +31.2% | 76.5 |
-| MLP (PyTorch, tuned)  | 16.894 | 11.326 | 0.421 | +23.9% | 66.0 |
-| Ridge | 19.109 | 14.118 | 0.259 | +14.0% | 0.3 |
-| Lasso | 19.109 | 14.108 | 0.259 | +14.0% | 1.7 |
+| **LightGBM** (best) | **14.563** | **9.772** | **0.570** | **+34.4%** | 31.3 |
+| Random Forest (tuned) | 15.312 | 10.785 | 0.524 | +31.0% | 835.5 |
+| MLP (PyTorch, tuned)  | 17.084 | 11.633 | 0.408 | +23.1% | 189.9 |
+| Ridge | 19.109 | 14.118 | 0.259 | +14.0% | 0.6 |
+| Lasso | 19.109 | 14.108 | 0.259 | +14.0% | 3.0 |
 | Mean baseline | 22.207 | 18.803 | −0.000 | 0.0% | <0.01 |
 
 Both proposal targets (R² ≥ 0.50 AND ≥15% RMSE reduction over the mean
@@ -177,8 +177,8 @@ Methodological notes:
    performance, which is the empirical norm on tabular data of this
    size.
 2. **Multi-seed stability is good.** Across seeds [42, 7, 13], RMSE
-   standard deviations are 0.02–0.13 and R² standard deviations are
-   0.001–0.009 — the headline numbers are not seed-luck. Per-seed
+   standard deviations are 0.02–0.08 and R² standard deviations are
+   0.001–0.005 — the headline numbers are not seed-luck. Per-seed
    detail in
    [`outputs/tables/multi_seed_results.csv`](outputs/tables/multi_seed_results.csv).
 3. **Audio-only ceiling (no `track_genre`): R² = 0.527.** Removing
